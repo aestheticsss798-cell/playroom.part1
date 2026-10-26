@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PLAYROOM — Mini Arcade</title>
+<style>
+:root {
+  --bg: #101010;
+  --panel: #191919;
+  --line: #353535;
+  --text: #f5f5f5;
+  --muted: #a5a5a5;
+  --accent: #ffffff;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+}
+header {
+  padding: 20px 6%;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.logo { font-weight: 900; letter-spacing: 3px; font-size: 22px; }
+header small { color: var(--muted); letter-spacing: 1px; }
+main { max-width: 960px; padding: 35px 20px 60px; margin: auto; }
+.eyebrow { color: var(--muted); letter-spacing: 3px; font-size: 11px; }
+h1 { font-size: clamp(38px, 7vw, 64px); letter-spacing: -2px; margin: 14px 0; }
+.subtitle { color: var(--muted); line-height: 1.6; }
+.games {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  margin-top: 28px;
+}
+.card, .gamebox {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px;
+}
+.card {
+  cursor: pointer;
+  color: var(--text);
+  text-align: left;
+  transition: border-color .15s, transform .15s;
+}
+.card:hover { border-color: #aaa; transform: translateY(-2px); }
+.card .symbol { font-size: 28px; }
+.card h3 { margin-bottom: 8px; }
+.card p { color: var(--muted); font-size: 13px; line-height: 1.5; }
+button, select {
+  background: #f3f3f3;
+  color: #111;
+  border: 0;
+  border-radius: 7px;
+  padding: 11px 14px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+}
+button:focus-visible, select:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 3px;
+}
+button.secondary {
+  background: #292929;
+  color: white;
+  border: 1px solid #484848;
+}
+button:disabled { cursor: default; opacity: .65; }
+.hidden { display: none !important; }
+#gameArea { margin-top: 25px; }
+.gamebox h2 { margin-top: 4px; }
+.status { color: #e2e2e2; min-height: 24px; line-height: 1.5; }
+.muted { color: var(--muted); font-size: 13px; line-height: 1.6; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 15px 0; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 22px 0; }
+
+/* Word search */
+.word-layout { display: grid; grid-template-columns: 1fr; gap: 20px; }
+.word-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 4px;
+  max-width: 440px;
+}
+.letter {
+  min-width: 0;
+  aspect-ratio: 1;
+  padding: 0;
+  border-radius: 5px;
+  background: #252525;
+  border: 1px solid #414141;
+  color: white;
+  font-size: clamp(12px, 3vw, 17px);
+}
+.letter.selected { background: white; color: black; }
+.letter.found { background: #555; border-color: white; color: white; }
+.words { display: flex; flex-wrap: wrap; gap: 7px; }
+.word-chip { border: 1px solid #444; padding: 7px 10px; border-radius: 6px; font-size: 13px; }
+.word-chip.done { text-decoration: line-through; color: #999; background: #282828; }
+
+/* Tic tac toe */
+.ttt {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 92px));
+  gap: 7px;
+  margin: 18px 0;
+}
+.ttt button {
+  height: 85px;
+  font-size: 32px;
+  border: 1px solid #444;
+  background: #252525;
+  color: white;
+}
+.ttt button:disabled { opacity: 1; }
+.ttt button.win { background: white; color: black; }
+
+/* Memory */
+.memory-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 76px));
+  gap: 8px;
+  margin: 20px 0;
+}
+.memory-card {
+  aspect-ratio: 1;
+  padding: 0;
+  font-size: 26px;
+  background: #292929;
+  color: white;
+  border: 1px solid #444;
+}
+.memory-card.open { background: white; color: black; }
+.memory-card.matched { background: #484848; border-color: white; }
+
+/* RPS */
+.rps-choices { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0; }
+.rps-choices button { min-width: 100px; padding: 20px 12px; font-size: 17px; }
+.rps-choices span { display: block; font-size: 32px; margin-bottom: 8px; }
+
+footer { border-top: 1px solid var(--line); padding: 22px; text-align: center; color: #777; font-size: 12px; }
+
+@media (max-width: 480px) {
+  header { padding: 17px 5%; }
+  header small { font-size: 9px; }
+  main { padding: 28px 15px 45px; }
+  .gamebox { padding: 13px; }
+  .ttt button { height: 72px; }
+  .memory-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">PLAYROOM.</div>
+  <small>FOUR GAMES / ZERO COST</small>
+</header>
+
+<main>
+  <section id="home">
+    <div class="eyebrow">YOUR LITTLE INTERNET ARCADE</div>
+    <h1>Pick your<br>kind of fun.</h1>
+    <p class="subtitle">No downloads. No complicated rules.<br>Just open a game and play.</p>
+
+    <div class="games">
+      <button class="card" onclick="openGame('word')">
+        <div class="symbol">⌕</div>
+        <h3>01 / Word Search</h3>
+        <p>Find hidden words in a letter grid.</p>
+      </button>
+      <button class="card" onclick="openGame('ttt')">
+        <div class="symbol">⊞</div>
+        <h3>02 / Tic-Tac-Toe</h3>
+        <p>Challenge a friend on the same device.</p>
+      </button>
+      <button class="card" onclick="openGame('memory')">
+        <div class="symbol">▤</div>
+        <h3>03 / Memory Match</h3>
+        <p>Flip cards and discover matching pairs.</p>
+      </button>
+      <button class="card" onclick="openGame('rps')">
+        <div class="symbol">✊</div>
+        <h3>04 / RPS Arena</h3>
+        <p>Can you beat the computer?</p>
+      </button>
+    </div>
+  </section>
+
+  <section id="gameArea" class="hidden">
+    <button class="secondary" onclick="goHome()">← All games</button>
+
+    <div id="wordGame" class="gamebox hidden">
+      <div class="eyebrow">GAME 01</div>
+      <h2>Word Search</h2>
+      <p class="muted">Click the first and last letter of a word. Words run horizontally, vertically or diagonally in either direction.</p>
+      <div id="wordStatus" class="status" aria-live="polite">Find all the words.</div>
+      <div class="word-layout">
+        <div id="wordGrid" class="word-grid"></div>
+        <div>
+          <p class="muted">WORDS TO FIND</p>
+          <div id="wordList" class="words"></div>
+        </div>
+      </div>
+      <div class="controls">
+        <button onclick="newWordGame()">New puzzle</button>
+        <button class="secondary" onclick="clearWordSelection()">Clear selection</button>
+      </div>
+    </div>
+
+    <div id="tttGame" class="gamebox hidden">
+      <div class="eyebrow">GAME 02</div>
+      <h2>Tic-Tac-Toe</h2>
+      <p class="muted">Two players, one device. X goes first.</p>
+      <div id="tttStatus" class="status" aria-live="polite">X's turn.</div>
+      <div id="tttBoard" class="ttt"></div>
+      <div class="controls">
+        <button onclick="newTTT()">Play again</button>
+      </div>
+    </div>
+
+    <div id="memoryGame" class="gamebox hidden">
+      <div class="eyebrow">GAME 03</div>
+      <h2>Memory Match</h2>
+      <p class="muted">Find all six pairs. Try to use as few moves as possible.</p>
+      <div id="memoryStatus" class="status" aria-live="polite">Moves: 0</div>
+      <div id="memoryBoard" class="memory-grid"></div>
+      <div class="controls">
+        <button onclick="newMemory()">Shuffle & restart</button>
+      </div>
+    </div>
+
+    <div id="rpsGame" class="gamebox hidden">
+      <div class="eyebrow">GAME 04</div>
+      <h2>Rock Paper Scissors</h2>
+      <p class="muted">Rock beats scissors. Scissors beat paper. Paper beats rock.</p>
+      <div id="rpsStatus" class="status" aria-live="polite">Make your move.</div>
+      <div id="rpsResult" class="muted"></div>
+      <div class="rps-choices">
+        <button onclick="playRPS('Rock')"><span>✊</span>Rock</button>
+        <button onclick="playRPS('Paper')"><span>✋</span>Paper</button>
+        <button onclick="playRPS('Scissors')"><span>✌</span>Scissors</button>
+      </div>
+      <p id="rpsScore" class="status">You: 0 — Computer: 0 — Draws: 0</p>
+      <button class="secondary" onclick="resetRPS()">Reset score</button>
+    </div>
+  </section>
+</main>
+
+<footer>PLAYROOM. / MADE FOR FUN.</footer>
+
+<script>
+"use strict";
+
+// MENU
+const gameIds = ["wordGame", "tttGame", "memoryGame", "rpsGame"];
+
+function openGame(name) {
+  document.getElementById("home").classList.add("hidden");
+  document.getElementById("gameArea").classList.remove("hidden");
+  gameIds.forEach(id => document.getElementById(id).classList.add("hidden"));
+
+  const selected = {
+    word: "wordGame",
+    ttt: "tttGame",
+    memory: "memoryGame",
+    rps: "rpsGame"
+  }[name];
+
+  document.getElementById(selected).classList.remove("hidden");
+
+  if (name === "word") newWordGame();
+  if (name === "ttt") newTTT();
+  if (name === "memory") newMemory();
+  if (name === "rps") resetRPS();
+
+  window.scrollTo(0, 0);
+}
+
+function goHome() {
+  document.getElementById("gameArea").classList.add("hidden");
+  document.getElementById("home").classList.remove("hidden");
+  window.scrollTo(0, 0);
+}
+
+// WORD SEARCH
+const SIZE = 8;
+const WORDS = ["CODE", "GAME", "PLAY", "STAR", "BOOK", "MATH"];
+let letters = [];
+let placements = [];
+let foundWords = new Set();
+let firstCell = null;
+let chosenCells = new Set();
+
+function newWordGame() {
+  letters = Array(SIZE * SIZE).fill("");
+  placements = [];
+  foundWords = new Set();
+  firstCell = null;
+  chosenCells = new Set();
+
+  // Each word is placed along a straight line in one of 8 directions.
+  const directions = [
+    [0,1], [1,0], [1,1], [0,-1],
+    [-1,0], [-1,-1], [1,-1], [-1,1]
+  ];
+
+  for (const word of WORDS) {
+    let placed = false;
+
+    for (let attempt = 0; attempt < 500 && !placed; attempt++) {
+      const [dr, dc] = directions[Math.floor(Math.random() * directions.length)];
+      const r = Math.floor(Math.random() * SIZE);
+      const c = Math.floor(Math.random() * SIZE);
+      const endR = r + dr * (word.length - 1);
+      const endC = c + dc * (word.length - 1);
+
+      if (endR < 0 || endR >= SIZE || endC < 0 || endC >= SIZE) continue;
+
+      const cells = [];
+      let fits = true;
+
+      for (let i = 0; i < word.length; i++) {
+        const idx = (r + dr * i) * SIZE + c + dc * i;
+        if (letters[idx] && letters[idx] !== word[i]) {
+          fits = false;
+          break;
+        }
+        cells.push(idx);
+      }
+
+      if (fits) {
+        cells.forEach((idx, i) => letters[idx] = word[i]);
+        placements.push({word, cells});
+        placed = true;
+      }
+    }
+
+    if (!placed) {
+      // Safe fallback: restart the entire puzzle if random placement fails.
+      newWordGame();
+      return;
+    }
+  }
+
+  letters = letters.map(letter => letter || "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Math.floor(Math.random() * 26)]);
+  drawWordGrid();
+  drawWordList();
+  updateWordStatus();
+}
+
+function drawWordGrid() {
+  const grid = document.getElementById("wordGrid");
+  grid.replaceChildren();
+
+  letters.forEach((letter, idx) => {
+    const button = document.createElement("button");
+    button.className = "letter";
+    button.textContent = letter;
+    button.setAttribute("aria-label", "Row " + (Math.floor(idx / SIZE) + 1) + ", column " + (idx % SIZE + 1) + ", " + letter);
+    button.addEventListener("click", () => chooseWordCell(idx));
+    grid.appendChild(button);
+  });
+
+  updateWordHighlights();
+}
+
+function drawWordList() {
+  const list = document.getElementById("wordList");
+  list.replaceChildren();
+
+  WORDS.forEach(word => {
+    const chip = document.createElement("span");
+    chip.id = "chip-" + word;
+    chip.className = "word-chip" + (foundWords.has(word) ? " done" : "");
+    chip.textContent = word;
+    list.appendChild(chip);
+  });
+}
+
+function chooseWordCell(idx) {
+  if (firstCell === null) {
+    firstCell = idx;
+    chosenCells = new Set([idx]);
+    updateWordHighlights();
+    document.getElementById("wordStatus").textContent = "Now select the last letter.";
+    return;
+  }
+
+  const startR = Math.floor(firstCell / SIZE);
+  const startC = firstCell % SIZE;
+  const endR = Math.floor(idx / SIZE);
+  const endC = idx % SIZE;
+  const drRaw = endR - startR;
+  const dcRaw = endC - startC;
+
+  const aligned = drRaw === 0 || dcRaw === 0 || Math.abs(drRaw) === Math.abs(dcRaw);
+
+  if (!aligned) {
+    firstCell = idx;
+    chosenCells = new Set([idx]);
+    updateWordHighlights();
+    document.getElementById("wordStatus").textContent = "Choose a straight line. Now select the last letter.";
+    return;
+  }
+
+  const dr = Math.sign(drRaw);
+  const dc = Math.sign(dcRaw);
+  const length = Math.max(Math.abs(drRaw), Math.abs(dcRaw)) + 1;
+  chosenCells = new Set();
+
+  for (let i = 0; i < length; i++) {
+    chosenCells.add((startR + dr * i) * SIZE + startC + dc * i);
+  }
+
+  const selectedWord = [...chosenCells].map(i => letters[i]).join("");
+  const reversedWord = selectedWord.split("").reverse().join("");
+  const match = placements.find(p =>
+    !foundWords.has(p.word) &&
+    (p.word === selectedWord || p.word === reversedWord) &&
+    p.cells.length === chosenCells.size &&
+    p.cells.every(cell => chosenCells.has(cell))
+  );
+
+  if (match) {
+    foundWords.add(match.word);
+    document.getElementById("chip-" + match.word).classList.add("done");
+    document.getElementById("wordStatus").textContent = "Found " + match.word + "!";
+    if (foundWords.size === WORDS.length) {
+      document.getElementById("wordStatus").textContent = "You found every word. Puzzle complete!";
+    }
+  } else {
+    document.getElementById("wordStatus").textContent = "Not a hidden word. Try again!";
+  }
+
+  firstCell = null;
+  updateWordHighlights();
+}
+
+function updateWordHighlights() {
+  const buttons = document.querySelectorAll("#wordGrid .letter");
+  buttons.forEach((button, idx) => {
+    button.classList.toggle("selected", chosenCells.has(idx));
+    button.classList.toggle("found", placements.some(p =>
+      foundWords.has(p.word) && p.cells.includes(idx)
+    ));
+  });
+}
+
+function clearWordSelection() {
+  firstCell = null;
+  chosenCells = new Set();
+  updateWordHighlights();
+  document.getElementById("wordStatus").textContent = "Selection cleared. Find all the words.";
+}
+
+function updateWordStatus() {
+  document.getElementById("wordStatus").textContent =
+    "Found " + foundWords.size + " of " + WORDS.length + " words.";
+}
+
+// TIC-TAC-TOE
+let ttt = Array(9).fill("");
+let tttTurn = "X";
+let tttOver = false;
+const winLines = [
+  [0,1,2], [3,4,5], [6,7,8],
+  [0,3,6], [1,4,7], [2,5,8],
+  [0,4,8], [2,4,6]
+];
+
+function newTTT() {
+  ttt = Array(9).fill("");
+  tttTurn = "X";
+  tttOver = false;
+  drawTTT();
+  document.getElementById("tttStatus").textContent = "X's turn.";
+}
+
+function drawTTT() {
+  const board = document.getElementById("tttBoard");
+  board.replaceChildren();
+
+  const winnerLine = winLines.find(line =>
+    ttt[line[0]] && ttt[line[0]] === ttt[line[1]] && ttt[line[1]] === ttt[line[2]]
+  );
+
+  ttt.forEach((value, idx) => {
+    const button = document.createElement("button");
+    button.textContent = value;
+    button.setAttribute("aria-label", "Square " + (idx + 1) + (value ? ", " + value : ", empty"));
+    button.disabled = Boolean(value) || tttOver;
+    if (winnerLine && winnerLine.includes(idx)) button.classList.add("win");
+    button.addEventListener("click", () => playTTT(idx));
+    board.appendChild(button);
+  });
+}
+
+function playTTT(idx) {
+  if (tttOver || ttt[idx]) return;
+  ttt[idx] = tttTurn;
+
+  const line = winLines.find(line =>
+    ttt[line[0]] && ttt[line[0]] === ttt[line[1]] && ttt[line[1]] === ttt[line[2]]
+  );
+
+  if (line) {
+    tttOver = true;
+    document.getElementById("tttStatus").textContent = tttTurn + " wins!";
+  } else if (ttt.every(Boolean)) {
+    tttOver = true;
+    document.getElementById("tttStatus").textContent = "It's a draw!";
+  } else {
+    tttTurn = tttTurn === "X" ? "O" : "X";
+    document.getElementById("tttStatus").textContent = tttTurn + "'s turn.";
+  }
+
+  drawTTT();
+}
+
+// MEMORY MATCH
+const symbols = ["●", "▲", "■", "◆", "★", "♥"];
+let memoryCards = [];
+let memoryOpen = [];
+let memoryMoves = 0;
+let memoryLocked = false;
+let memoryMatches = 0;
+let memoryGameId = 0;
+
+function newMemory() {
+  memoryGameId++;
+  memoryLocked = false;
+  memoryOpen = [];
+  memoryMoves = 0;
+  memoryMatches = 0;
+
+  memoryCards = [...symbols, ...symbols]
+    .map((symbol, id) => ({symbol, id, matched: false, open: false}))
+    .sort(() => Math.random() - 0.5);
+
+  drawMemory();
+  document.getElementById("memoryStatus").textContent = "Moves: 0 | Pairs: 0/6";
+}
+
+function drawMemory() {
+  const board = document.getElementById("memoryBoard");
+  board.replaceChildren();
+
+  memoryCards.forEach((card, idx) => {
+    const button = document.createElement("button");
+    button.className = "memory-card";
+    button.textContent = card.open || card.matched ? card.symbol : "?";
+    button.setAttribute("aria-label", card.matched || card.open ? card.symbol : "Hidden card");
+    button.disabled = card.matched || card.open || memoryLocked;
+    if (card.open) button.classList.add("open");
+    if (card.matched) button.classList.add("matched");
+    button.addEventListener("click", () => flipMemory(idx));
+    board.appendChild(button);
+  });
+}
+
+function flipMemory(idx) {
+  const card = memoryCards[idx];
+  if (memoryLocked || card.open || card.matched) return;
+
+  card.open = true;
+  memoryOpen.push(idx);
+
+  if (memoryOpen.length === 2) {
+    memoryMoves++;
+    const [a, b] = memoryOpen.map(i => memoryCards[i]);
+
+    if (a.symbol === b.symbol) {
+      a.matched = true;
+      b.matched = true;
+      memoryMatches++;
+      memoryOpen = [];
+      document.getElementById("memoryStatus").textContent =
+        "Moves: " + memoryMoves + " | Pairs: " + memoryMatches + "/6";
+      drawMemory();
+
+      if (memoryMatches === 6) {
+        document.getElementById("memoryStatus").textContent =
+          "Complete! " + memoryMoves + " moves to find all pairs.";
+      }
+      return;
+    }
+
+    memoryLocked = true;
+    drawMemory();
+    const thisGame = memoryGameId;
+
+    setTimeout(() => {
+      if (thisGame !== memoryGameId) return;
+      a.open = false;
+      b.open = false;
+      memoryOpen = [];
+      memoryLocked = false;
+      document.getElementById("memoryStatus").textContent =
+        "Moves: " + memoryMoves + " | Pairs: " + memoryMatches + "/6";
+      drawMemory();
+    }, 750);
+  } else {
+    drawMemory();
+  }
+}
+
+// ROCK PAPER SCISSORS
+let rpsYou = 0;
+let rpsComputer = 0;
+let rpsDraws = 0;
+
+function playRPS(choice) {
+  const options = ["Rock", "Paper", "Scissors"];
+  const computer = options[Math.floor(Math.random() * 3)];
+  let outcome;
+
+  if (choice === computer) {
+    outcome = "It's a draw!";
+    rpsDraws++;
+  } else if (
+    (choice === "Rock" && computer === "Scissors") ||
+    (choice === "Paper" && computer === "Rock") ||
+    (choice === "Scissors" && computer === "Paper")
+  ) {
+    outcome = "You win this round!";
+    rpsYou++;
+  } else {
+    outcome = "Computer wins this round!";
+    rpsComputer++;
+  }
+
+  document.getElementById("rpsStatus").textContent = outcome;
+  document.getElementById("rpsResult").textContent =
+    "You chose " + choice + ". Computer chose " + computer + ".";
+  document.getElementById("rpsScore").textContent =
+    "You: " + rpsYou + " — Computer: " + rpsComputer + " — Draws: " + rpsDraws;
+}
+
+function resetRPS() {
+  rpsYou = 0;
+  rpsComputer = 0;
+  rpsDraws = 0;
+  document.getElementById("rpsStatus").textContent = "Make your move.";
+  document.getElementById("rpsResult").textContent = "";
+  document.getElementById("rpsScore").textContent = "You: 0 — Computer: 0 — Draws: 0";
+}
+
+// Start at the menu; initialize games when opened.
+</script>
+</body>
+</html>
